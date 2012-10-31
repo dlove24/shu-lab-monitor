@@ -2,4 +2,28 @@
 
 %html
   %body
-    %h1= say_me
+    %table{:border => "1"}
+      %tr
+        %th Host Name
+        %th Ping Status
+        %th SSH Status
+        %th WWW Status
+      - 16.times do |host_number|
+        %tr
+          %td.address= host_address(host_number)
+
+          - if ping_result(host_number) then
+            %td.up= "true"
+          - else
+            %td.down= "false"
+
+          - if ssh_result(host_number) then
+            %td.up= "true"
+          - else
+            %td.down= "false"
+
+          - if www_result(host_number) then
+            %td.up= "true"
+          - else
+            %td.down= "false"
+

@@ -11,7 +11,7 @@ $LOAD_PATH << "../lib"
 require 'webrick'
 
 require 'net/ssh'
-require 'net/sftp'
+require 'net/http'
 
 require 'trollop'
 
@@ -30,29 +30,64 @@ opts = Trollop::options do
   EOS
 end
 
-# Define the core IPv6 prefix and derived sub-nets
-MASTER_PREFIX = "2001:8b0:1698:cf4"
-MASTER_PREFIX_LENGTH = 60
-
-# Derive the 16 sub-nets from the master prefix
-@address_list = Array.new
-
-16.times do |num|
-  @address_list << MASTER_PREFIX + num.to_s(16) + '::1'
-end
-
 ###
 ### Data Model. Holds the status of the various nodes
 ###
 
 class HostState
 
+  # Define the core IPv6 prefix and derived sub-nets
+  MASTER_PREFIX = "2001:8b0:1698:cf4"
+  MASTER_PREFIX_LENGTH = 60
+
   def initialize
+
+    # Derive the 16 router sub-nets from the master prefix
+    @router_list = Array.new
+    @ping_result = Array.new
+    @ssh_result = Array.new
+    @www_result = Array.new
+
+    16.times do |host|
+      @router_list << MASTER_PREFIX + host.to_s(16) + '::1'
+
+      # Ping all the hosts in the address list
+      %x[ping -n -c 3 #{@router_list[host]}]
+      @ping_result << ($? == 0)
+      puts @router_list[host]
+      puts @ping_result
+
+      # Try to connect to each host using ssh
+      begin
+        Net::SSH.start(@router_list[host], 'user', :password => "silver", :timeout => 1) do |ssh|
+          ssh.exec!("hostname")
+        end
+        @ssh_result << true
+      rescue
+        @ssh_result << false
+      end
+
+      # Try to connect to each host using http
+      response = Net::HTTP.get(@router_list[host], '/index.html')
+      @www_result << (not response.nil? and not response.empty?)
+    end
 
   end
 
-  def say_me
-    return "There is hpo"
+  def host_address(host_number)
+    @router_list[host_number]
+  end
+
+  def ping_result(host_number)
+    @ping_result[host_number]
+  end
+
+  def ssh_result(host_number)
+    @ssh_result[host_number]
+  end
+
+  def www_result(host_number)
+    @www_result[host_number]
   end
 
 end
