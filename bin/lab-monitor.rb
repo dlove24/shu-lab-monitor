@@ -54,8 +54,6 @@ class HostState
       # Ping all the hosts in the address list
       %x[ping -n -c 3 #{@router_list[host]}]
       @ping_result << ($? == 0)
-      puts @router_list[host]
-      puts @ping_result
 
       # Try to connect to each host using ssh
       begin
@@ -93,46 +91,18 @@ class HostState
 end
 
 ###
-### Create the Monitor Serverlet
+### Write the index.html file
 ###
 
-class SubNetMonitor < WEBrick::HTTPServlet::AbstractServlet
+# Read the standard template, and keep it in memory
+# to save file I/O
+master_template = File.read("../src/index.haml")
+host_state = HostState.new
 
-  def initialize(arg)
-    # Read the standard template, and keep it in memory
-    # to save file I/O
-    @@master_template = File.read("../src/index.haml")
-    @@host_state = HostState.new
-  end
+# Render the template
+content = Haml::Engine.new(master_template, :format => :html5)
+page_text = content.render(host_state)
 
-  def do_GET(request, response)
-    status, content_type, body = do_stuff_with(request)
-
-    response.status = status
-    response['Content-Type'] = content_type
-    response.body = body
-  end
-
-  def do_stuff_with(request)
-    # Build the page from the monitor state, using the
-    # standard template
-    say_me = "A strange world"
-
-    content = Haml::Engine.new(@@master_template, :format => :html5)
-
-    # Send the page back to the caller
-    page_text = content.render(@@host_state)
-    puts page_text
-    return 200, "text/html", page_text
-  end
-
+File.open("index.html", 'w') do |file|
+  file.puts page_text
 end
-
-###
-### Launch the web server
-###
-
-server = WEBrick::HTTPServer.new(:Port => 8000)
-server.mount "/monitor", SubNetMonitor
-trap "INT" do server.shutdown end
-server.start

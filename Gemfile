@@ -8,5 +8,6 @@ source "http://rubygems.org"
 group :development do
   gem "bundler", "~> 1.2.0"
   gem "haml", "~> 3.1.7"
+  gem "heel", "~> 2.0.0"
   gem "sass", "~> 3.2.1"
 end
